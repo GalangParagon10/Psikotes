@@ -21,7 +21,7 @@
             I: "entry.1255192217",            
             S: "entry.871442160",            
             C: "entry.1854576989",            
-            // KOREKSI UTAMA: Menggunakan kode baru untuk Nama Kandidat (entry.1690292845)
+            // PERUBAHAN: Mengganti NAME_CANDIDATE menjadi NAME
             NAME: "entry.1690292845", 
             // ASUMSI: Menggunakan entry lama (entry.1140320701) untuk ID Sesi/Kandidat
             CANDIDATE_ID: "entry.1140320701", 
@@ -158,7 +158,7 @@
                 // MENGIRIMKAN ID SESI UNIK
                 [FIELD_NAMES.CANDIDATE_ID]: sessionId, 
                 // MENGIRIMKAN NAMA KANDIDAT YANG DIMASUKKAN
-                [FIELD_NAMES.NAME_CANDIDATE]: candidateName, 
+                [FIELD_NAMES.NAME]: candidateName, // PERUBAHAN: Menggunakan FIELD_NAMES.NAME
                 [FIELD_NAMES.PROFILE]: result.primaryType,
                 [FIELD_NAMES.D]: result.scores.D,
                 [FIELD_NAMES.I]: result.scores.I,
@@ -204,8 +204,6 @@
                     <h1 class="text-3xl font-extrabold text-blue-700 mb-4">Tes Profil DISC</h1>
                     <p class="text-gray-600 mb-6">Selamat datang. Harap isi nama Anda sebelum memulai tes.</p>
                     
-                    <!-- PENTING: BLOK PERINGATAN ADMIN DIHILANGKAN DI SINI -->
-
                     <!-- INPUT NAMA KANDIDAT -->
                     <div class="text-left mb-6">
                         <label for="candidate-name" class="block text-lg font-semibold text-gray-700 mb-2">Nama Lengkap Anda:</label>
@@ -224,236 +222,4 @@
                         <p class="font-semibold text-yellow-700">Instruksi Tes:</p>
                         <ul class="list-disc list-inside text-gray-700 text-sm mt-2">
                             <li>Anda akan memilih <strong>SATU</strong> kata yang <strong>PALING</strong> menggambarkan diri Anda.</li>
-                            <li>Dan <strong>SATU</strong> kata yang <strong>PALING TIDAK</strong> menggambarkan diri Anda.</li>
-                            <li>Pastikan Anda memilih <strong>kedua</strong> opsi (Paling dan Paling Tidak) di setiap nomor.</li>
-                        </ul>
-                    </div>
-
-                    <button
-                        onclick="goToPage('test')"
-                        ${!isNameValid ? 'disabled' : ''}
-                        class="px-8 py-3 ${buttonClass} text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105 disabled:bg-gray-400"
-                    >
-                        Mulai Tes
-                    </button>
-                    <p class="mt-4 text-sm text-gray-500">ID Sesi: ${sessionId}</p>
-                </div>
-            `;
-        };
-        
-        const renderTest = () => {
-            const completedCount = currentAnswers.filter(a => a.most !== null && a.least !== null).length;
-            
-            const questionHtml = discQuestions.map((q, index) => {
-                const choicesHtml = Object.values(q.choices).map((choice, choiceIndex) => {
-                    const isMostSelected = currentAnswers[index].most === choice;
-                    const isLeastSelected = currentAnswers[index].least === choice;
-                    const isDisabled = (isMostSelected && isLeastSelected); 
-
-                    return `
-                        <div class="flex flex-col p-3 rounded-lg transition duration-150 ${isDisabled ? 'bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'}" data-choice="${choice}">
-                            <span class="font-medium text-gray-700 mb-2">${choice}</span>
-                            <div class="flex space-x-3">
-                                <label class="flex items-center space-x-1 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        onchange="window.handleSelection(${index}, 'most', '${choice}')"
-                                        ${isMostSelected ? 'checked' : ''}
-                                        ${isLeastSelected || isDisabled ? 'disabled' : ''}
-                                        class="form-checkbox h-5 w-5 ${isLeastSelected ? 'text-gray-400' : 'text-green-500'}"
-                                    />
-                                    <span class="text-sm">Paling</span>
-                                </label>
-                                <label class="flex items-center space-x-1 cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        onchange="window.handleSelection(${index}, 'least', '${choice}')"
-                                        ${isLeastSelected ? 'checked' : ''}
-                                        ${isMostSelected || isDisabled ? 'disabled' : ''}
-                                        class="form-checkbox h-5 w-5 ${isMostSelected ? 'text-gray-400' : 'text-red-500'}"
-                                    />
-                                    <span class="text-sm">Paling Tidak</span>
-                                </label>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-
-                const warning = !(currentAnswers[index].most && currentAnswers[index].least) ? 
-                    `<p class="mt-3 text-red-500 text-xs font-medium">Harap pilih satu "Paling" dan satu "Paling Tidak".</p>` : '';
-
-                return `
-                    <div class="p-4 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition duration-200">
-                        <p class="font-semibold text-lg mb-4 text-blue-600">Pertanyaan ${q.id}. Pilih SATU Paling dan SATU Paling Tidak:</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${choicesHtml}</div>
-                        ${warning}
-                    </div>
-                `;
-            }).join('');
-
-            const isComplete = completedCount === discQuestions.length;
-            
-            let buttonText = 'Kirim Hasil ke Sheet & Lihat Ringkasan';
-            if (isSubmitting) {
-                buttonText = 'Mengirim... Harap Tunggu!';
-            } else if (!isComplete) {
-                buttonText = 'Lengkapi Tes Dahulu';
-            }
-
-            const buttonClass = isComplete && !isSubmitting ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed';
-
-            return `
-                <div class="p-4 md:p-8 bg-white shadow-xl rounded-xl max-w-4xl mx-auto w-full">
-                    <h1 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">Sesi Tes DISC (${completedCount}/${discQuestions.length} Terjawab)</h1>
-                    <p class="mb-4 text-sm text-gray-600">Kandidat: <span class="font-bold text-gray-800">${candidateName}</span> (ID Sesi: <span class="font-mono text-xs p-1 bg-gray-200 rounded break-all">${sessionId}</span>)</p>
-
-                    <div class="grid grid-cols-1 gap-8">${questionHtml}</div>
-
-                    <div class="mt-8 flex justify-center">
-                        <button
-                            onclick="window.handleSubmitTest()"
-                            ${!isComplete || isSubmitting ? 'disabled' : ''}
-                            class="px-10 py-4 ${buttonClass} text-white font-bold text-lg rounded-lg shadow-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        >
-                            ${buttonText}
-                        </button>
-                    </div>
-                </div>
-            `;
-        };
-        
-        const renderResults = () => {
-            if (!profileResult) return '<p class="text-center text-red-500">Hasil tidak ditemukan.</p>';
-
-            const { primaryType, rawScores, rawProfile } = profileResult;
-            
-            const profileColorMap = {
-                D: 'bg-red-500', I: 'bg-yellow-500', S: 'bg-green-500', C: 'bg-blue-500',
-                'D/I': 'bg-gradient-to-r from-red-500 to-yellow-500',
-                'I/D': 'bg-gradient-to-r from-yellow-500 to-red-500',
-                'S/C': 'bg-gradient-to-r from-green-500 to-blue-500',
-                'C/S': 'bg-gradient-to-r from-blue-500 to-green-500',
-                'D/S': 'bg-gradient-to-r from-red-500 to-green-500',
-                'I/S': 'bg-gradient-to-r from-yellow-500 to-green-500',
-                'I/C': 'bg-gradient-to-r from-yellow-500 to-blue-500',
-                'C/D': 'bg-gradient-to-r from-blue-500 to-red-500',
-            };
-            const profileDescMap = {
-                'Dominance (Kekuasaan)': 'Berorientasi pada hasil, tegas, pemecah masalah, dan menyukai tantangan.',
-                'Influence (Pengaruh)': 'Sosial, optimis, antusias, dan persuasif. Suka bekerja dalam tim.',
-                'Steadiness (Keteguhan)': 'Sabar, tenang, setia, suportif, dan menghargai stabilitas.',
-                'Conscientiousness (Kepatuhan)': 'Analitis, akurat, hati-hati, fokus pada kualitas dan detail.',
-            };
-
-            const getPrimaryTypeClass = () => {
-                const types = rawProfile.split('/');
-                if (types.length === 1) return profileColorMap[types[0]] || 'bg-gray-400';
-                const sortedType = types.sort().join('/'); 
-                return profileColorMap[sortedType] || profileColorMap[rawProfile] || 'bg-gray-400';
-            };
-            
-            const scoreHtml = Object.entries(rawScores || {}).map(([type, score]) => ` 
-                <div class="text-center p-4 border rounded-lg shadow-md bg-white">
-                    <p class="text-lg font-semibold text-gray-700">${type}</p>
-                    <p class="text-4xl font-extrabold text-blue-600 mt-1">${score}</p>
-                </div>
-            `).join('');
-
-            return `
-                <div class="p-8 bg-white shadow-2xl rounded-xl max-w-4xl mx-auto w-full">
-                    <h1 class="text-3xl font-extrabold text-green-700 text-center mb-6">HASIL TES PROFIL DISC ANDA</h1>
-                    
-                    <div class="text-center p-6 mb-8 rounded-lg shadow-inner bg-blue-50 border border-blue-200">
-                        <p class="text-xl text-gray-700 mb-2">Profil Dominan Anda adalah:</p>
-                        <h2 class="text-4xl font-black text-white p-4 rounded-lg inline-block ${getPrimaryTypeClass()} shadow-xl">
-                            ${primaryType}
-                        </h2>
-                        <p class="mt-4 text-gray-600 italic">${profileDescMap[primaryType.split('(')[0].trim()] || "Lihat skor di bawah untuk detail lebih lanjut."}</p>
-                    </div>
-                    
-                    <div class="text-center p-4 bg-green-50 border border-green-200 rounded-lg mb-8">
-                        <p class="font-bold text-green-700">PENGIRIMAN DATA BERHASIL!</p>
-                        <p class="text-sm text-gray-700">Hasil skor telah dikirim ke Google Sheet Anda. Silakan cek spreadsheet tersebut.</p>
-                        <p class="text-xs text-gray-500 mt-1">Kandidat: ${candidateName} | ID Sesi: ${sessionId}</p>
-                    </div>
-
-
-                    <h3 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">Skor Anda:</h3>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">${scoreHtml}</div>
-
-                    <div class="flex justify-center">
-                        <button
-                            onclick="window.resetTestAndGoToPage('test')"
-                            class="px-6 py-3 border border-blue-600 text-blue-600 font-semibold rounded-lg hover:bg-blue-50 transition duration-300"
-                        >
-                            Ulangi Tes
-                        </button>
-                    </div>
-                </div>
-            `;
-        };
-        
-        // Halaman 'Sheet' dihilangkan karena data dikirim ke luar.
-        // Fungsi ini hanya berfungsi sebagai navigasi.
-        const goToPage = (page) => {
-            if (page === 'sheet') {
-                // Di aplikasi baru ini, 'sheet' redirect ke 'results'
-                page = 'results';
-            }
-            currentPage = page;
-            updateUI();
-        };
-        
-        const resetTestAndGoToPage = (page) => {
-            currentAnswers = discQuestions.map(() => ({ most: null, least: null }));
-            profileResult = null;
-            // Nama kandidat tidak di-reset, tapi ID Sesi di-reset
-            sessionId = crypto.randomUUID(); 
-            goToPage(page);
-        };
-
-        const updateUI = () => {
-            const appContainer = document.getElementById('app-container');
-            if (!appContainer) return;
-
-            let content = '';
-            switch (currentPage) {
-                case 'welcome':
-                    content = renderWelcome();
-                    break;
-                case 'test':
-                    content = renderTest();
-                    break;
-                case 'results':
-                    content = renderResults();
-                    break;
-                default:
-                    content = renderWelcome();
-            }
-            appContainer.innerHTML = content;
-        };
-        
-        // Expose necessary functions globally for HTML event handlers
-        window.handleSelection = handleSelection;
-        window.handleSubmitTest = handleSubmitTest;
-        window.goToPage = goToPage; 
-        window.resetTestAndGoToPage = resetTestAndGoToPage;
-        window.handleNameInput = handleNameInput; // expose fungsi baru
-
-        // FIX: Use DOMContentLoaded listener for better reliability than window.onload
-        document.addEventListener('DOMContentLoaded', updateUI);
-
-    </script>
-    <style>
-        .form-checkbox:checked {
-            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
-        }
-    </style>
-</head>
-<body class="min-h-screen bg-gray-100 p-4 sm:p-8 flex items-center justify-center font-sans">
-    <div id="app-container" class="w-full">
-        <!-- Content will be rendered here by JavaScript -->
-        <div class="text-center text-xl text-blue-600 p-12">Memuat...</div>
-    </div>
-</body>
-</html>
+                            <li>Dan <strong>SATU</strong> kata yang <strong>PALING TIDAK</strong> menggambarkan diri
