@@ -9,217 +9,26 @@
     
     <script type="module">
         // =========================================================================
-        // !!! KONFIGURASI SUDAH DIPERBARUI BERDASARKAN KOREKSI TERAKHIR ANDA !!!
+        // !!! HARAP PERIKSA SEMUA TANDA KUTIP DAN KOMA DI BAWAH INI DENGAN TELITI !!!
         
-        // URL Pengiriman Google Form (Sudah dipastikan berakhiran /formResponse)
+        // URL Pengiriman Google Form (WAJIB berakhiran /formResponse)
         const FORM_ENDPOINT = "https://docs.google.com/forms/u/0/d/e/1FAIpQLSdmbhQQiXNgOs_gifS8K_1HG2ppND9vmHBbn3ZdXmlT41oUQQ/formResponse"; 
         
         // Kode Rahasia (entry.XXXXX) untuk setiap kolom di Google Sheet Anda
         const FIELD_NAMES = {
-            PROFILE: "entry.1582113093",     
-            D: "entry.239356283",            
-            I: "entry.1255192217",            
-            S: "entry.871442160",            
-            C: "entry.1854576989",            
-            // PERUBAHAN: Mengganti NAME_CANDIDATE menjadi NAME
-            NAME: "entry.1690292845", 
-            // ASUMSI: Menggunakan entry lama (entry.1140320701) untuk ID Sesi/Kandidat
-            CANDIDATE_ID: "entry.1140320701", 
+            PROFILE: "entry.1582113093",     // <-- Ada koma di akhir
+            D: "entry.239356283",            // <-- Ada koma di akhir
+            I: "entry.1255192217",            // <-- Ada koma di akhir
+            S: "entry.871442160",            // <-- Ada koma di akhir
+            C: "entry.1854576989",            // <-- Ada koma di akhir
+            NAME: "entry.1690292845",       // <-- Ada koma di akhir
+            CANDIDATE_ID: "entry.1140320701" // <-- TIDAK ADA koma di akhir baris ini
         };
         // =========================================================================
 
-        // Define DISC question set
-        const discQuestions = [
-            { id: 1, choices: { D: "Mendorong", I: "Ramah", S: "Tenang", C: "Akurat" } },
-            { id: 2, choices: { D: "Tegas", I: "Optimis", S: "Sabar", C: "Analitis" } },
-            { id: 3, choices: { D: "Kuat", I: "Ekspresif", S: "Stabil", C: "Logis" } },
-            { id: 4, choices: { D: "Berani", I: "Antusias", S: "Konsisten", C: "Perfeksionis" } },
-            { id: 5, choices: { D: "Menantang", I: "Sosial", S: "Penuh Perhatian", C: "Hati-hati" } },
-            { id: 6, choices: { D: "Berorientasi Hasil", I: "Persuasif", S: "Setia", C: "Tepat" } },
-            { id: 7, choices: { D: "Independen", I: "Ceria", S: "Pendengar yang Baik", C: "Teratur" } },
-            { id: 8, choices: { D: "Lugas", I: "Komunikatif", S: "Damai", C: "Kritis" } },
-            { id: 9, choices: { D: "Bertekad", I: "Fleksibel", S: "Mudah Diajak Kerjasama", C: "Teliti" } },
-            { id: 10, choices: { D: "Inovatif", I: "Spontan", S: "Hormat", C: "Standar Tinggi" } },
-        ];
+        // ... (Kode JavaScript Lanjutan)
         
-        // --- APPLICATION STATE (Global Variables) ---
-        let sessionId = crypto.randomUUID(); // Menggunakan UUID acak sebagai ID Sesi
-        let currentPage = 'welcome';
-        let currentAnswers = discQuestions.map(() => ({ most: null, least: null }));
-        let profileResult = null;
-        let isSubmitting = false; // Status baru untuk mencegah klik ganda
-        let candidateName = ''; // Variabel baru untuk menyimpan nama kandidat
-
-        // --- DISC LOGIC ---
-
-        const handleSelection = (questionIndex, type, value) => {
-            const currentQ = currentAnswers[questionIndex];
-            
-            if (type === 'most') {
-                if (currentQ.least === value) {
-                    currentQ.least = null;
-                }
-                currentQ.most = value;
-            } else { // type === 'least'
-                if (currentQ.most === value) {
-                    currentQ.most = null;
-                }
-                currentQ.least = value;
-            }
-            updateUI();
-        };
-
-        const handleNameInput = (value) => {
-            candidateName = value;
-            updateUI(); // Untuk memperbarui tombol start/mulai
-        };
+        // (Sisa kode yang sudah kita perbaiki bersama)
         
-        const calculateDISC = () => {
-            const scores = { D: 0, I: 0, S: 0, C: 0 };
-            currentAnswers.forEach((answer, index) => {
-                const choices = discQuestions[index].choices;
-                if (answer.most) {
-                    const type = Object.keys(choices).find(key => choices[key] === answer.most);
-                    if (type) scores[type] += 1;
-                }
-                if (answer.least) {
-                    const type = Object.keys(choices).find(key => choices[key] === answer.least);
-                    if (type) scores[type] -= 1;
-                }
-            });
-
-            const sortedScores = Object.entries(scores).sort(([, a], [, b]) => b - a);
-            const maxScore = sortedScores[0][1];
-            const primaryRawType = sortedScores.filter(([, score]) => score === maxScore).map(([type]) => type).join('/');
-            
-            const primaryProfileMap = {
-                D: 'Dominance (Kekuasaan)', I: 'Influence (Pengaruh)', S: 'Steadiness (Keteguhan)', C: 'Conscientiousness (Kepatuhan)',
-                'D/I': 'Dominance/Influence (Pendorong & Persuasif)', 'I/D': 'Influence/Dominance (Persuasif & Pendorong)', 
-                'S/C': 'Steadiness/Conscientiousness (Teliti & Stabil)', 'C/S': 'Conscientiousness/Steadiness (Teliti & Stabil)',
-                'D/S': 'Dominance/Steadiness (Tegas & Stabil)', 'I/S': 'Influence/Steadiness (Ramah & Stabil)',
-                'I/C': 'Influence/Conscientiousness (Ramah & Teliti)', 'C/D': 'Conscientiousness/Dominance (Teliti & Tegas)'
-            };
-            
-            const finalPrimaryKey = primaryRawType.split('/').sort().join('/');
-
-            return {
-                scores: scores,
-                primaryType: primaryProfileMap[finalPrimaryKey] || primaryProfileMap[primaryRawType] || primaryProfileMap[primaryRawType.split('/')[0]],
-                rawProfile: primaryRawType,
-            };
-        };
-
-        const handleSubmitTest = async () => {
-            if (isSubmitting) return; // ABAIKAN JIKA SEDANG MENGIRIM
-
-            const isComplete = currentAnswers.every(a => a.most !== null && a.least !== null);
-            if (!isComplete) {
-                const appContainer = document.getElementById('app-container');
-                appContainer.insertAdjacentHTML('afterbegin', `
-                    <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                        <div class="bg-white p-6 rounded-lg shadow-2xl">
-                            <h3 class="text-xl font-bold text-red-600 mb-4">Tes Belum Selesai!</h3>
-                            <p>Harap jawab semua 10 pertanyaan sebelum mengirim.</p>
-                            <button onclick="document.getElementById('error-modal').remove()" class="mt-4 px-4 py-2 bg-red-500 text-white rounded">Tutup</button>
-                        </div>
-                    </div>
-                `);
-                return;
-            }
-
-            const result = calculateDISC();
-            profileResult = result;
-            
-            isSubmitting = true; // Set status sedang mengirim
-            updateUI(); // Segera nonaktifkan tombol
-            
-            // --- LOGIKA PENGIRIMAN FORM KE SHEET (MENGGUNAKAN IFRAME) ---
-            
-            // 1. Buat Iframe tersembunyi
-            const iframeName = 'google_form_target';
-            let iframe = document.getElementById(iframeName);
-            if (!iframe) {
-                iframe = document.createElement('iframe');
-                iframe.name = iframeName;
-                iframe.id = iframeName;
-                iframe.style.display = 'none'; // Sembunyikan iframe
-                document.body.appendChild(iframe);
-            }
-
-            // 2. Buat Form
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = FORM_ENDPOINT;
-            form.style.display = 'none';
-            form.target = iframeName; // Kirimkan form ke iframe tersembunyi
-            
-            // Data yang akan dikirim
-            const data = {
-                // MENGIRIMKAN ID SESI UNIK
-                [FIELD_NAMES.CANDIDATE_ID]: sessionId, 
-                // MENGIRIMKAN NAMA KANDIDAT YANG DIMASUKKAN
-                [FIELD_NAMES.NAME]: candidateName, // PERUBAHAN: Menggunakan FIELD_NAMES.NAME
-                [FIELD_NAMES.PROFILE]: result.primaryType,
-                [FIELD_NAMES.D]: result.scores.D,
-                [FIELD_NAMES.I]: result.scores.I,
-                [FIELD_NAMES.S]: result.scores.S,
-                [FIELD_NAMES.C]: result.scores.C,
-            };
-
-            // Masukkan data ke input tersembunyi
-            for (const key in data) {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = key;
-                input.value = data[key];
-                form.appendChild(input);
-            }
-
-            // 3. Kirim dan Update UI
-            document.body.appendChild(form);
-            
-            // Memberi sedikit waktu untuk proses submit ke Google Form (asynchronous)
-            setTimeout(() => {
-                form.submit();
-                document.body.removeChild(form); 
-                
-                // Setelah yakin form terkirim, SETELAH DELAY, pindahkan ke halaman hasil
-                setTimeout(() => {
-                    isSubmitting = false; // Reset status submit
-                    currentPage = 'results';
-                    updateUI(); // Tampilkan halaman hasil yang sudah kita desain
-                }, 1000); // Tunggu 1 detik agar proses kirim selesai sebelum pindah
-                
-            }, 100); 
-        };
-
-        // --- RENDERING FUNCTIONS (UI) ---
-
-        const renderWelcome = () => {
-            const isNameValid = candidateName.trim().length > 2;
-            const buttonClass = isNameValid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 disabled:cursor-not-allowed';
-
-            return `
-                <div class="text-center p-8 bg-white shadow-xl rounded-xl w-full max-w-xl">
-                    <h1 class="text-3xl font-extrabold text-blue-700 mb-4">Tes Profil DISC</h1>
-                    <p class="text-gray-600 mb-6">Selamat datang. Harap isi nama Anda sebelum memulai tes.</p>
-                    
-                    <!-- INPUT NAMA KANDIDAT -->
-                    <div class="text-left mb-6">
-                        <label for="candidate-name" class="block text-lg font-semibold text-gray-700 mb-2">Nama Lengkap Anda:</label>
-                        <input
-                            type="text"
-                            id="candidate-name"
-                            value="${candidateName}"
-                            oninput="window.handleNameInput(this.value)"
-                            placeholder="Contoh: Risa Saraswati"
-                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition duration-150"
-                        />
-                        ${!isNameValid && candidateName.length > 0 ? '<p class="text-red-500 text-sm mt-1">Nama terlalu pendek.</p>' : ''}
-                    </div>
-
-                    <div class="text-left mb-6 p-4 border-l-4 border-yellow-500 bg-yellow-50 rounded">
-                        <p class="font-semibold text-yellow-700">Instruksi Tes:</p>
-                        <ul class="list-disc list-inside text-gray-700 text-sm mt-2">
-                            <li>Anda akan memilih <strong>SATU</strong> kata yang <strong>PALING</strong> menggambarkan diri Anda.</li>
-                            <li>Dan <strong>SATU</strong> kata yang <strong>PALING TIDAK</strong> menggambarkan diri
+    </script>
+    <!-- ... (Sisa HTML) -->
