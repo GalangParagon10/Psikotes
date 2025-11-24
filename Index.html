@@ -10,7 +10,7 @@
     <script type="module">
         // --- KONFIGURASI PENGIRIMAN DATA (SUDAH DIPERBAIKI) ---
         // Ganti URL ini dengan URL 'action' dari Google Form atau Formspree Anda.
-        const FORM_ENDPOINT = "https://docs.google.com/forms/d/e/1FAIpQLSd.../formResponse"; 
+        const FORM_ENDPOINT = "<iframe src="https://docs.google.com/forms/d/e/1FAIpQLSdmbhQQiXNgOs_gifS8K_1HG2ppND9vmHBbn3ZdXmlT41oUQQ/formResponse"; 
         
         // Nama-nama ini HARUS cocok dengan nama input yang dihasilkan oleh Google Form Anda.
         const FIELD_NAMES = {
@@ -122,7 +122,8 @@
             form.method = 'POST';
             form.action = FORM_ENDPOINT;
             form.style.display = 'none';
-
+            form.target = '_blank'; // FIX: Mencegah pengalihan halaman utama
+            
             // Data yang akan dikirim
             const data = {
                 [FIELD_NAMES.CANDIDATE_ID]: sessionId,
