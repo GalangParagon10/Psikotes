@@ -21,8 +21,8 @@
             I: "entry.1255192217",            
             S: "entry.871442160",            
             C: "entry.1854576989",            
-            NAME: "entry.1690292845",       
-            CANDIDATE_ID: "entry.1140320701" 
+            NAME: "entry.1690292845",       // NAMA KANDIDAT (entry.1690292845)
+            CANDIDATE_ID: "entry.1140320701" // ID SESI UNIK (entry.1140320701)
         };
         // =========================================================================
 
@@ -43,6 +43,9 @@
         // --- LOGO CONFIGURATION ---
         const LOGO_URL = "https://placehold.co/100x100/ffffff/000000?text=Logo"; 
         const LOGO_ALT = "Resting Koala Spa Logo";
+        // BARIS INI HARUS DIGANTI DENGAN URL GAMBAR LANGSUNG YANG STABIL (.png/.jpg)
+        const koalaUrl = "https://i.imgur.com/ED85aWS.png";
+
 
         // --- APPLICATION STATE (Global Variables) ---
         let sessionId = crypto.randomUUID(); // Menggunakan UUID acak sebagai ID Sesi
@@ -128,6 +131,20 @@
                 `);
                 return;
             }
+            
+            if (candidateName.trim().length === 0) {
+                 const appContainer = document.getElementById('app-container');
+                 appContainer.insertAdjacentHTML('afterbegin', `
+                    <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div class="bg-white p-6 rounded-lg shadow-2xl">
+                            <h3 class="text-xl font-bold text-red-600 mb-4">Nama Belum Diisi!</h3>
+                            <p>Harap kembali dan isi nama lengkap Anda sebelum mengirimkan tes.</p>
+                            <button onclick="document.getElementById('error-modal').remove(); goToPage('welcome')" class="mt-4 px-4 py-2 bg-red-500 text-white rounded">Kembali</button>
+                        </div>
+                    </div>
+                `);
+                return;
+            }
 
             const result = calculateDISC();
             profileResult = result;
@@ -198,12 +215,13 @@
         // --- RENDERING FUNCTIONS (UI) ---
 
         const renderLogo = (sizeClass) => {
-             // Menggunakan URL Koala yang diunggah.
-            const koalaUrl = "https://storage.googleapis.com/gcs-content-uploads/Resting%20Koala%20Spa.png-947a1e6f-2d73-4390-9856-db97e3687833";
+            // Menggunakan URL Koala yang diunggah.
+            const koalaUrlToUse = koalaUrl || "https://storage.googleapis.com/gcs-content-uploads/Resting%20Koala%20Spa.png-947a1e6f-2d73-4390-9856-db97e3687833";
+
 
             return `
                 <div class="text-center mb-6">
-                    <img src="${koalaUrl}" alt="${LOGO_ALT}" class="mx-auto ${sizeClass}" onerror="this.onerror=null; this.src='${LOGO_URL}'"/>
+                    <img src="${koalaUrlToUse}" alt="${LOGO_ALT}" class="mx-auto ${sizeClass}" onerror="this.onerror=null; this.src='${LOGO_URL}'"/>
                     <h2 class="text-2xl font-extrabold text-gray-800 mt-2">Resting Koala Spa</h2>
                     <p class="text-lg font-semibold text-blue-700">Tes Profil</p>
                 </div>
