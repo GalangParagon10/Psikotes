@@ -116,13 +116,25 @@
             const result = calculateDISC();
             profileResult = result;
             
-            // --- LOGIKA PENGIRIMAN FORM KE SHEET ---
+            // --- LOGIKA PENGIRIMAN FORM KE SHEET (MENGGUNAKAN IFRAME) ---
             
+            // 1. Buat Iframe tersembunyi
+            const iframeName = 'google_form_target';
+            let iframe = document.getElementById(iframeName);
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.name = iframeName;
+                iframe.id = iframeName;
+                iframe.style.display = 'none'; // Sembunyikan iframe
+                document.body.appendChild(iframe);
+            }
+
+            // 2. Buat Form
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = FORM_ENDPOINT;
             form.style.display = 'none';
-            form.target = '_blank'; // FIX: Mencegah pengalihan halaman utama
+            form.target = iframeName; // FIX: Kirimkan form ke iframe tersembunyi
             
             // Data yang akan dikirim
             const data = {
@@ -143,10 +155,14 @@
                 form.appendChild(input);
             }
 
-            // Tambahkan form ke body dan kirim
+            // 3. Kirim dan Update UI
             document.body.appendChild(form);
-            form.submit(); // Mengirim data ke Google Sheet
-            document.body.removeChild(form); // Hapus form setelah dikirim
+            
+            // Set timeout untuk memastikan form submit dan prevent double-submit
+            setTimeout(() => {
+                form.submit();
+                document.body.removeChild(form); // Hapus form setelah dikirim
+            }, 100); 
 
             // Update UI
             currentPage = 'results';
