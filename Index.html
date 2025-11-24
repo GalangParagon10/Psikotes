@@ -8,20 +8,25 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <script type="module">
-        // --- KONFIGURASI PENGIRIMAN DATA (SUDAH DIPERBAIKI) ---
-        // Ganti URL ini dengan URL 'action' dari Google Form atau Formspree Anda.
+        // =========================================================================
+        // !!! KONFIGURASI SUDAH DIPERBARUI BERDASARKAN KOREKSI TERAKHIR ANDA !!!
+        
+        // URL Pengiriman Google Form (Sudah dipastikan berakhiran /formResponse)
         const FORM_ENDPOINT = "https://docs.google.com/forms/u/0/d/e/1FAIpQLSdmbhQQiXNgOs_gifS8K_1HG2ppND9vmHBbn3ZdXmlT41oUQQ/formResponse"; 
         
-        // Nama-nama ini HARUS cocok dengan nama input yang dihasilkan oleh Google Form Anda.
+        // Kode Rahasia (entry.XXXXX) untuk setiap kolom di Google Sheet Anda
         const FIELD_NAMES = {
-            PROFILE: "entry.1582113093",      // Field untuk Profil Utama
-            D: "entry.239356283",            // Field untuk Skor Dominance (D)
-            I: "entry.1255192217",            // Field untuk Skor Influence (I)
-            S: "entry.871442160",            // Field untuk Skor Steadiness (S)
-            C: "entry.1854576989",            // Field untuk Skor Conscientiousness (C)
-            CANDIDATE_ID: "entry.1140320701" // Field untuk ID Kandidat/Sesi
+            PROFILE: "entry.1582113093",     
+            D: "entry.239356283",            
+            I: "entry.1255192217",            
+            S: "entry.871442160",            
+            C: "entry.1854576989",            
+            // KOREKSI UTAMA: Menggunakan kode baru untuk Nama Kandidat (entry.1690292845)
+            NAME: "entry.1690292845", 
+            // ASUMSI: Menggunakan entry lama (entry.1140320701) untuk ID Sesi/Kandidat
+            CANDIDATE_ID: "entry.1140320701", 
         };
-        // -----------------------------------------------
+        // =========================================================================
 
         // Define DISC question set
         const discQuestions = [
@@ -42,6 +47,8 @@
         let currentPage = 'welcome';
         let currentAnswers = discQuestions.map(() => ({ most: null, least: null }));
         let profileResult = null;
+        let isSubmitting = false; // Status baru untuk mencegah klik ganda
+        let candidateName = ''; // Variabel baru untuk menyimpan nama kandidat
 
         // --- DISC LOGIC ---
 
@@ -60,6 +67,11 @@
                 currentQ.least = value;
             }
             updateUI();
+        };
+
+        const handleNameInput = (value) => {
+            candidateName = value;
+            updateUI(); // Untuk memperbarui tombol start/mulai
         };
         
         const calculateDISC = () => {
@@ -98,6 +110,8 @@
         };
 
         const handleSubmitTest = async () => {
+            if (isSubmitting) return; // ABAIKAN JIKA SEDANG MENGIRIM
+
             const isComplete = currentAnswers.every(a => a.most !== null && a.least !== null);
             if (!isComplete) {
                 const appContainer = document.getElementById('app-container');
@@ -115,6 +129,9 @@
 
             const result = calculateDISC();
             profileResult = result;
+            
+            isSubmitting = true; // Set status sedang mengirim
+            updateUI(); // Segera nonaktifkan tombol
             
             // --- LOGIKA PENGIRIMAN FORM KE SHEET (MENGGUNAKAN IFRAME) ---
             
@@ -134,11 +151,14 @@
             form.method = 'POST';
             form.action = FORM_ENDPOINT;
             form.style.display = 'none';
-            form.target = iframeName; // FIX: Kirimkan form ke iframe tersembunyi
+            form.target = iframeName; // Kirimkan form ke iframe tersembunyi
             
             // Data yang akan dikirim
             const data = {
-                [FIELD_NAMES.CANDIDATE_ID]: sessionId,
+                // MENGIRIMKAN ID SESI UNIK
+                [FIELD_NAMES.CANDIDATE_ID]: sessionId, 
+                // MENGIRIMKAN NAMA KANDIDAT YANG DIMASUKKAN
+                [FIELD_NAMES.NAME_CANDIDATE]: candidateName, 
                 [FIELD_NAMES.PROFILE]: result.primaryType,
                 [FIELD_NAMES.D]: result.scores.D,
                 [FIELD_NAMES.I]: result.scores.I,
@@ -158,26 +178,51 @@
             // 3. Kirim dan Update UI
             document.body.appendChild(form);
             
-            // Set timeout untuk memastikan form submit dan prevent double-submit
+            // Memberi sedikit waktu untuk proses submit ke Google Form (asynchronous)
             setTimeout(() => {
                 form.submit();
-                document.body.removeChild(form); // Hapus form setelah dikirim
+                document.body.removeChild(form); 
+                
+                // Setelah yakin form terkirim, SETELAH DELAY, pindahkan ke halaman hasil
+                setTimeout(() => {
+                    isSubmitting = false; // Reset status submit
+                    currentPage = 'results';
+                    updateUI(); // Tampilkan halaman hasil yang sudah kita desain
+                }, 1000); // Tunggu 1 detik agar proses kirim selesai sebelum pindah
+                
             }, 100); 
-
-            // Update UI
-            currentPage = 'results';
-            updateUI();
         };
 
         // --- RENDERING FUNCTIONS (UI) ---
 
         const renderWelcome = () => {
+            const isNameValid = candidateName.trim().length > 2;
+            const buttonClass = isNameValid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 disabled:cursor-not-allowed';
+
             return `
                 <div class="text-center p-8 bg-white shadow-xl rounded-xl w-full max-w-xl">
                     <h1 class="text-3xl font-extrabold text-blue-700 mb-4">Tes Profil DISC</h1>
-                    <p class="text-gray-600 mb-6">Tes ini akan membantu mengidentifikasi kecenderungan perilaku Anda dalam empat dimensi utama: Dominance (D), Influence (I), Steadiness (S), dan Conscientiousness (C).</p>
+                    <p class="text-gray-600 mb-6">Selamat datang. Harap isi nama Anda sebelum memulai tes.</p>
                     
-                    <!-- Peringatan Konfigurasi untuk Admin (SUDAH DIHAPUS) -->
+                    <!-- Peringatan untuk memastikan form sudah dikonfigurasi dengan benar -->
+                    <div class="text-left mb-6 p-4 border-l-4 border-red-500 bg-red-50 rounded">
+                        <p class="font-semibold text-red-700">PENTING (Hanya Admin yang melihat):</p>
+                        <p class="text-sm text-gray-700 mt-1">Pastikan Anda sudah mengganti semua placeholder FORM_ENDPOINT dan FIELD_NAMES di kode JavaScript sebelum membagikannya. Jika tidak, data tidak akan masuk ke Sheet Anda!</p>
+                    </div>
+
+                    <!-- INPUT NAMA KANDIDAT -->
+                    <div class="text-left mb-6">
+                        <label for="candidate-name" class="block text-lg font-semibold text-gray-700 mb-2">Nama Lengkap Anda:</label>
+                        <input
+                            type="text"
+                            id="candidate-name"
+                            value="${candidateName}"
+                            oninput="window.handleNameInput(this.value)"
+                            placeholder="Contoh: Risa Saraswati"
+                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition duration-150"
+                        />
+                        ${!isNameValid && candidateName.length > 0 ? '<p class="text-red-500 text-sm mt-1">Nama terlalu pendek.</p>' : ''}
+                    </div>
 
                     <div class="text-left mb-6 p-4 border-l-4 border-yellow-500 bg-yellow-50 rounded">
                         <p class="font-semibold text-yellow-700">Instruksi Tes:</p>
@@ -190,11 +235,12 @@
 
                     <button
                         onclick="goToPage('test')"
-                        class="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105"
+                        ${!isNameValid ? 'disabled' : ''}
+                        class="px-8 py-3 ${buttonClass} text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105 disabled:bg-gray-400"
                     >
                         Mulai Tes
                     </button>
-                    <p class="mt-4 text-sm text-gray-500">ID Sesi Anda: ${sessionId}</p>
+                    <p class="mt-4 text-sm text-gray-500">ID Sesi: ${sessionId}</p>
                 </div>
             `;
         };
@@ -250,22 +296,30 @@
             }).join('');
 
             const isComplete = completedCount === discQuestions.length;
-            const buttonClass = isComplete ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed';
+            
+            let buttonText = 'Kirim Hasil ke Sheet & Lihat Ringkasan';
+            if (isSubmitting) {
+                buttonText = 'Mengirim... Harap Tunggu!';
+            } else if (!isComplete) {
+                buttonText = 'Lengkapi Tes Dahulu';
+            }
+
+            const buttonClass = isComplete && !isSubmitting ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed';
 
             return `
                 <div class="p-4 md:p-8 bg-white shadow-xl rounded-xl max-w-4xl mx-auto w-full">
                     <h1 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">Sesi Tes DISC (${completedCount}/${discQuestions.length} Terjawab)</h1>
-                    <p class="mb-4 text-sm text-gray-600">ID Sesi: <span class="font-mono text-xs p-1 bg-gray-200 rounded break-all">${sessionId}</span></p>
+                    <p class="mb-4 text-sm text-gray-600">Kandidat: <span class="font-bold text-gray-800">${candidateName}</span> (ID Sesi: <span class="font-mono text-xs p-1 bg-gray-200 rounded break-all">${sessionId}</span>)</p>
 
                     <div class="grid grid-cols-1 gap-8">${questionHtml}</div>
 
                     <div class="mt-8 flex justify-center">
                         <button
                             onclick="window.handleSubmitTest()"
-                            ${!isComplete ? 'disabled' : ''}
+                            ${!isComplete || isSubmitting ? 'disabled' : ''}
                             class="px-10 py-4 ${buttonClass} text-white font-bold text-lg rounded-lg shadow-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
                         >
-                            Kirim Hasil ke Sheet & Lihat Ringkasan
+                            ${buttonText}
                         </button>
                     </div>
                 </div>
@@ -302,7 +356,7 @@
                 return profileColorMap[sortedType] || profileColorMap[rawProfile] || 'bg-gray-400';
             };
             
-            const scoreHtml = Object.entries(rawScores).map(([type, score]) => `
+            const scoreHtml = Object.entries(rawScores || {}).map(([type, score]) => ` 
                 <div class="text-center p-4 border rounded-lg shadow-md bg-white">
                     <p class="text-lg font-semibold text-gray-700">${type}</p>
                     <p class="text-4xl font-extrabold text-blue-600 mt-1">${score}</p>
@@ -324,7 +378,7 @@
                     <div class="text-center p-4 bg-green-50 border border-green-200 rounded-lg mb-8">
                         <p class="font-bold text-green-700">PENGIRIMAN DATA BERHASIL!</p>
                         <p class="text-sm text-gray-700">Hasil skor telah dikirim ke Google Sheet Anda. Silakan cek spreadsheet tersebut.</p>
-                        <p class="text-xs text-gray-500 mt-1">ID Sesi: ${sessionId}</p>
+                        <p class="text-xs text-gray-500 mt-1">Kandidat: ${candidateName} | ID Sesi: ${sessionId}</p>
                     </div>
 
 
@@ -357,7 +411,8 @@
         const resetTestAndGoToPage = (page) => {
             currentAnswers = discQuestions.map(() => ({ most: null, least: null }));
             profileResult = null;
-            sessionId = crypto.randomUUID(); // Buat ID sesi baru
+            // Nama kandidat tidak di-reset, tapi ID Sesi di-reset
+            sessionId = crypto.randomUUID(); 
             goToPage(page);
         };
 
@@ -385,8 +440,9 @@
         // Expose necessary functions globally for HTML event handlers
         window.handleSelection = handleSelection;
         window.handleSubmitTest = handleSubmitTest;
-        window.goToPage = goToPage; // Tetap ada untuk navigasi internal
+        window.goToPage = goToPage; 
         window.resetTestAndGoToPage = resetTestAndGoToPage;
+        window.handleNameInput = handleNameInput; // expose fungsi baru
 
         // FIX: Use DOMContentLoaded listener for better reliability than window.onload
         document.addEventListener('DOMContentLoaded', updateUI);
@@ -405,4 +461,3 @@
     </div>
 </body>
 </html>
-
