@@ -10,17 +10,19 @@
     <script type="module">
         // --- KONFIGURASI PENGIRIMAN DATA (GANTI INI) ---
         // Ganti URL ini dengan URL 'action' dari Google Form atau Formspree Anda.
-        const FORM_ENDPOINT = "https://docs.google.com/forms/d/e/1FAIpQLSdmbhQQiXNgOs_gifS8K_1HG2ppND9vmHBbn3ZdXmlT41oUQQ/viewform?usp=pp_url"; // WAJIB GANTI!
+        // PASTI ENDPOINT-NYA BERAKHIR DENGAN /formResponse
+        const FORM_ENDPOINT = "https://docs.google.com/forms/d/e/1FAIpQLSd.../formResponse"; // <--- WAJIB GANTI, PASTI BERAKHIR DENGAN /formResponse!
         
         // Nama-nama ini HARUS cocok dengan nama input yang dihasilkan oleh Google Form Anda.
-        // Anda bisa mendapatkannya dengan menginspeksi elemen form di browser.
+        // Berdasarkan screenshot yang Anda berikan, Kode Rahasia Anda sudah benar secara format (entry.XXXX), 
+        // Anda hanya perlu memastikan bahwa angka-angka berikut adalah milik Anda:
         const FIELD_NAMES = {
-            PROFILE: "entry.1582113093", // Contoh: Field untuk Profil Utama
-            D: "entry.239356203",           // Contoh: Field untuk Skor Dominance (D)
-            I: "entry.1255192217",           // Contoh: Field untuk Skor Influence (I)
-            S: "entry.871442160",           // Contoh: Field untuk Skor Steadiness (S)
-            C: "entry.1854576989",           // Contoh: Field untuk Skor Conscientiousness (C)
-            CANDIDATE_ID: entry.1140320701" // Contoh: Field untuk ID Kandidat/Sesi
+            PROFILE: "entry.1582113093",      // Field untuk Profil Utama
+            D: "entry.239356283",            // Field untuk Skor Dominance (D)
+            I: "entry.1255192217",            // Field untuk Skor Influence (I)
+            S: "entry.871442160",            // Field untuk Skor Steadiness (S)
+            C: "entry.1854576989",            // Field untuk Skor Conscientiousness (C)
+            CANDIDATE_ID: "entry.1140320701" // Field untuk ID Kandidat/Sesi
         };
         // -----------------------------------------------
 
@@ -85,6 +87,8 @@
                 D: 'Dominance (Kekuasaan)', I: 'Influence (Pengaruh)', S: 'Steadiness (Keteguhan)', C: 'Conscientiousness (Kepatuhan)',
                 'D/I': 'Dominance/Influence (Pendorong & Persuasif)', 'I/D': 'Influence/Dominance (Persuasif & Pendorong)', 
                 'S/C': 'Steadiness/Conscientiousness (Teliti & Stabil)', 'C/S': 'Conscientiousness/Steadiness (Teliti & Stabil)',
+                'D/S': 'Dominance/Steadiness (Tegas & Stabil)', 'I/S': 'Influence/Steadiness (Ramah & Stabil)',
+                'I/C': 'Influence/Conscientiousness (Ramah & Teliti)', 'C/D': 'Conscientiousness/Dominance (Teliti & Tegas)'
             };
             
             const finalPrimaryKey = primaryRawType.split('/').sort().join('/');
@@ -373,8 +377,8 @@
         window.goToPage = goToPage; // Tetap ada untuk navigasi internal
         window.resetTestAndGoToPage = resetTestAndGoToPage;
 
-        // Initialize on window load
-        window.onload = updateUI;
+        // FIX: Use DOMContentLoaded listener for better reliability than window.onload
+        document.addEventListener('DOMContentLoaded', updateUI);
 
     </script>
     <style>
