@@ -8,14 +8,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <script type="module">
-        // --- KONFIGURASI PENGIRIMAN DATA (GANTI INI) ---
+        // --- KONFIGURASI PENGIRIMAN DATA (SUDAH DIPERBAIKI) ---
         // Ganti URL ini dengan URL 'action' dari Google Form atau Formspree Anda.
-        // PASTI ENDPOINT-NYA BERAKHIR DENGAN /formResponse
-        const FORM_ENDPOINT = "https://docs.google.com/forms/d/e/1FAIpQLSd.../formResponse"; // <--- WAJIB GANTI, PASTI BERAKHIR DENGAN /formResponse!
+        const FORM_ENDPOINT = "https://docs.google.com/forms/d/e/1FAIpQLSd.../formResponse"; 
         
         // Nama-nama ini HARUS cocok dengan nama input yang dihasilkan oleh Google Form Anda.
-        // Berdasarkan screenshot yang Anda berikan, Kode Rahasia Anda sudah benar secara format (entry.XXXX), 
-        // Anda hanya perlu memastikan bahwa angka-angka berikut adalah milik Anda:
         const FIELD_NAMES = {
             PROFILE: "entry.1582113093",      // Field untuk Profil Utama
             D: "entry.239356283",            // Field untuk Skor Dominance (D)
@@ -163,10 +160,7 @@
                     <h1 class="text-3xl font-extrabold text-blue-700 mb-4">Tes Profil DISC</h1>
                     <p class="text-gray-600 mb-6">Tes ini akan membantu mengidentifikasi kecenderungan perilaku Anda dalam empat dimensi utama: Dominance (D), Influence (I), Steadiness (S), dan Conscientiousness (C).</p>
                     
-                    <div class="text-left mb-6 p-4 border-l-4 border-red-500 bg-red-50 rounded">
-                        <p class="font-semibold text-red-700">Peringatan Konfigurasi:</p>
-                        <p class="text-sm text-gray-700 mt-1">Pastikan Anda telah mengganti <strong>FORM_ENDPOINT</strong> dan <strong>FIELD_NAMES</strong> di dalam kode JavaScript dengan data Google Form Anda sebelum membagikannya kepada kandidat!</p>
-                    </div>
+                    <!-- Peringatan Konfigurasi untuk Admin (SUDAH DIHAPUS) -->
 
                     <div class="text-left mb-6 p-4 border-l-4 border-yellow-500 bg-yellow-50 rounded">
                         <p class="font-semibold text-yellow-700">Instruksi Tes:</p>
