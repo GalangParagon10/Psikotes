@@ -7,29 +7,408 @@
     <!-- Load Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <script type="module">.
+    <script type="module">
         // =========================================================================
-        // !!! HARAP PERIKSA SEMUA TANDA KUTIP DAN KOMA DI BAWAH INI DENGAN TELITI !!!
+        // !!! KONFIGURASI PENTING (DIAMBIL DARI INPUT TERAKHIR ANDA) !!!
         
         // URL Pengiriman Google Form (WAJIB berakhiran /formResponse)
         const FORM_ENDPOINT = "https://docs.google.com/forms/u/0/d/e/1FAIpQLSdmbhQQiXNgOs_gifS8K_1HG2ppND9vmHBbn3ZdXmlT41oUQQ/formResponse"; 
         
         // Kode Rahasia (entry.XXXXX) untuk setiap kolom di Google Sheet Anda
         const FIELD_NAMES = {
-            PROFILE: "entry.1582113093",     // <-- Ada koma di akhir
-            D: "entry.239356283",            // <-- Ada koma di akhir
-            I: "entry.1255192217",            // <-- Ada koma di akhir
-            S: "entry.871442160",            // <-- Ada koma di akhir
-            C: "entry.1854576989",            // <-- Ada koma di akhir
-            NAME: "entry.1690292845",       // <-- Ada koma di akhir
-            CANDIDATE_ID: "entry.1140320701" // <-- TIDAK ADA koma di akhir baris ini
+            PROFILE: "entry.1582113093",     
+            D: "entry.239356283",            
+            I: "entry.1255192217",            
+            S: "entry.871442160",            
+            C: "entry.1854576989",            
+            NAME: "entry.1690292845",       
+            CANDIDATE_ID: "entry.1140320701" 
         };
         // =========================================================================
 
-        // ... (Kode JavaScript Lanjutan)
+        // Define DISC question set
+        const discQuestions = [
+            { id: 1, choices: { D: "Mendorong", I: "Ramah", S: "Tenang", C: "Akurat" } },
+            { id: 2, choices: { D: "Tegas", I: "Optimis", S: "Sabar", C: "Analitis" } },
+            { id: 3, choices: { D: "Kuat", I: "Ekspresif", S: "Stabil", C: "Logis" } },
+            { id: 4, choices: { D: "Berani", I: "Antusias", S: "Konsisten", C: "Perfeksionis" } },
+            { id: 5, choices: { D: "Menantang", I: "Sosial", S: "Penuh Perhatian", C: "Hati-hati" } },
+            { id: 6, choices: { D: "Berorientasi Hasil", I: "Persuasif", S: "Setia", C: "Tepat" } },
+            { id: 7, choices: { D: "Independen", I: "Ceria", S: "Pendengar yang Baik", C: "Teratur" } },
+            { id: 8, choices: { D: "Lugas", I: "Komunikatif", S: "Damai", C: "Kritis" } },
+            { id: 9, choices: { D: "Bertekad", I: "Fleksibel", S: "Mudah Diajak Kerjasama", C: "Teliti" } },
+            { id: 10, choices: { D: "Inovatif", I: "Spontan", S: "Hormat", C: "Standar Tinggi" } },
+        ];
         
-        // (Sisa kode yang sudah kita perbaiki bersama)
-        
-    </script>
-    <!-- ... (Sisa HTML) -->
+        // --- APPLICATION STATE (Global Variables) ---
+        let sessionId = crypto.randomUUID(); // Menggunakan UUID acak sebagai ID Sesi
+        let currentPage = 'welcome';
+        let currentAnswers = discQuestions.map(() => ({ most: null, least: null }));
+        let profileResult = null;
+        let isSubmitting = false; // Status baru untuk mencegah klik ganda
+        let candidateName = ''; // Variabel baru untuk menyimpan nama kandidat
 
+        // --- DISC LOGIC ---
+
+        const handleSelection = (questionIndex, type, value) => {
+            const currentQ = currentAnswers[questionIndex];
+            
+            if (type === 'most') {
+                if (currentQ.least === value) {
+                    currentQ.least = null;
+                }
+                currentQ.most = value;
+            } else { // type === 'least'
+                if (currentQ.most === value) {
+                    currentQ.most = null;
+                }
+                currentQ.least = value;
+            }
+            updateUI();
+        };
+
+        const handleNameInput = (value) => {
+            candidateName = value;
+            updateUI(); // Untuk memperbarui tombol start/mulai
+        };
+        
+        const calculateDISC = () => {
+            const scores = { D: 0, I: 0, S: 0, C: 0 };
+            currentAnswers.forEach((answer, index) => {
+                const choices = discQuestions[index].choices;
+                if (answer.most) {
+                    const type = Object.keys(choices).find(key => choices[key] === answer.most);
+                    if (type) scores[type] += 1;
+                }
+                if (answer.least) {
+                    const type = Object.keys(choices).find(key => choices[key] === answer.least);
+                    if (type) scores[type] -= 1;
+                }
+            });
+
+            const sortedScores = Object.entries(scores).sort(([, a], [, b]) => b - a);
+            const maxScore = sortedScores[0][1];
+            const primaryRawType = sortedScores.filter(([, score]) => score === maxScore).map(([type]) => type).join('/');
+            
+            const primaryProfileMap = {
+                D: 'Dominance (Kekuasaan)', I: 'Influence (Pengaruh)', S: 'Steadiness (Keteguhan)', C: 'Conscientiousness (Kepatuhan)',
+                'D/I': 'Dominance/Influence (Pendorong & Persuasif)', 'I/D': 'Influence/Dominance (Persuasif & Pendorong)', 
+                'S/C': 'Steadiness/Conscientiousness (Teliti & Stabil)', 'C/S': 'Conscientiousness/Steadiness (Teliti & Stabil)',
+                'D/S': 'Dominance/Steadiness (Tegas & Stabil)', 'I/S': 'Influence/Steadiness (Ramah & Stabil)',
+                'I/C': 'Influence/Conscientiousness (Ramah & Teliti)', 'C/D': 'Conscientiousness/Dominance (Teliti & Tegas)'
+            };
+            
+            const finalPrimaryKey = primaryRawType.split('/').sort().join('/');
+
+            return {
+                scores: scores,
+                primaryType: primaryProfileMap[finalPrimaryKey] || primaryProfileMap[primaryRawType] || primaryProfileMap[primaryRawType.split('/')[0]],
+                rawProfile: primaryRawType,
+            };
+        };
+
+        const handleSubmitTest = async () => {
+            if (isSubmitting) return; // ABAIKAN JIKA SEDANG MENGIRIM
+
+            const isComplete = currentAnswers.every(a => a.most !== null && a.least !== null);
+            if (!isComplete) {
+                const appContainer = document.getElementById('app-container');
+                appContainer.insertAdjacentHTML('afterbegin', `
+                    <div id="error-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div class="bg-white p-6 rounded-lg shadow-2xl">
+                            <h3 class="text-xl font-bold text-red-600 mb-4">Tes Belum Selesai!</h3>
+                            <p>Harap jawab semua 10 pertanyaan sebelum mengirim.</p>
+                            <button onclick="document.getElementById('error-modal').remove()" class="mt-4 px-4 py-2 bg-red-500 text-white rounded">Tutup</button>
+                        </div>
+                    </div>
+                `);
+                return;
+            }
+
+            const result = calculateDISC();
+            profileResult = result;
+            
+            isSubmitting = true; // Set status sedang mengirim
+            updateUI(); // Segera nonaktifkan tombol
+            
+            // --- LOGIKA PENGIRIMAN FORM KE SHEET (MENGGUNAKAN IFRAME) ---
+            
+            // 1. Buat Iframe tersembunyi
+            const iframeName = 'google_form_target';
+            let iframe = document.getElementById(iframeName);
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.name = iframeName;
+                iframe.id = iframeName;
+                iframe.style.display = 'none'; // Sembunyikan iframe
+                document.body.appendChild(iframe);
+            }
+
+            // 2. Buat Form
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = FORM_ENDPOINT;
+            form.style.display = 'none';
+            form.target = iframeName; // Kirimkan form ke iframe tersembunyi
+            
+            // Data yang akan dikirim
+            const data = {
+                // MENGIRIMKAN ID SESI UNIK
+                [FIELD_NAMES.CANDIDATE_ID]: sessionId, 
+                // MENGIRIMKAN NAMA KANDIDAT YANG DIMASUKKAN
+                [FIELD_NAMES.NAME]: candidateName, 
+                [FIELD_NAMES.PROFILE]: result.primaryType,
+                [FIELD_NAMES.D]: result.scores.D,
+                [FIELD_NAMES.I]: result.scores.I,
+                [FIELD_NAMES.S]: result.scores.S,
+                [FIELD_NAMES.C]: result.scores.C,
+            };
+
+            // Masukkan data ke input tersembunyi
+            for (const key in data) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = data[key];
+                form.appendChild(input);
+            }
+
+            // 3. Kirim dan Update UI
+            document.body.appendChild(form);
+            
+            // Memberi sedikit waktu untuk proses submit ke Google Form (asynchronous)
+            setTimeout(() => {
+                form.submit();
+                document.body.removeChild(form); 
+                
+                // Setelah yakin form terkirim, SETELAH DELAY, pindahkan ke halaman hasil
+                setTimeout(() => {
+                    isSubmitting = false; // Reset status submit
+                    currentPage = 'results';
+                    updateUI(); // Tampilkan halaman hasil yang sudah kita desain
+                }, 1000); // Tunggu 1 detik agar proses kirim selesai sebelum pindah
+                
+            }, 100); 
+        };
+
+        // --- RENDERING FUNCTIONS (UI) ---
+
+        const renderWelcome = () => {
+            const isNameValid = candidateName.trim().length > 2;
+            const buttonClass = isNameValid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 disabled:cursor-not-allowed';
+
+            return `
+                <div class="text-center p-8 bg-white shadow-xl rounded-xl w-full max-w-xl">
+                    <h1 class="text-3xl font-extrabold text-blue-700 mb-4">Tes Profil DISC</h1>
+                    <p class="text-gray-600 mb-6">Selamat datang. Harap isi nama Anda sebelum memulai tes.</p>
+                    
+                    <!-- INPUT NAMA KANDIDAT -->
+                    <div class="text-left mb-6">
+                        <label for="candidate-name" class="block text-lg font-semibold text-gray-700 mb-2">Nama Lengkap Anda:</label>
+                        <input
+                            type="text"
+                            id="candidate-name"
+                            value="${candidateName}"
+                            oninput="window.handleNameInput(this.value)"
+                            placeholder="Contoh: Risa Saraswati"
+                            class="w-full p-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition duration-150"
+                        />
+                        ${!isNameValid && candidateName.length > 0 ? '<p class="text-red-500 text-sm mt-1">Nama terlalu pendek.</p>' : ''}
+                    </div>
+
+                    <div class="text-left mb-6 p-4 border-l-4 border-yellow-500 bg-yellow-50 rounded">
+                        <p class="font-semibold text-yellow-700">Instruksi Tes:</p>
+                        <ul class="list-disc list-inside text-gray-700 text-sm mt-2">
+                            <li>Anda akan memilih <strong>SATU</strong> kata yang <strong>PALING</strong> menggambarkan diri Anda.</li>
+                            <li>Dan <strong>SATU</strong> kata yang <strong>PALING TIDAK</strong> menggambarkan diri Anda.</li>
+                            <li>Pastikan Anda memilih <strong>kedua</strong> opsi (Paling dan Paling Tidak) di setiap nomor.</li>
+                        </ul>
+                    </div>
+
+                    <button
+                        onclick="goToPage('test')"
+                        ${!isNameValid ? 'disabled' : ''}
+                        class="px-8 py-3 ${buttonClass} text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition duration-300 transform hover:scale-105 disabled:bg-gray-400"
+                    >
+                        Mulai Tes
+                    </button>
+                    <p class="mt-4 text-sm text-gray-500">ID Sesi: ${sessionId}</p>
+                </div>
+            `;
+        };
+        
+        const renderTest = () => {
+            const completedCount = currentAnswers.filter(a => a.most !== null && a.least !== null).length;
+            
+            const questionHtml = discQuestions.map((q, index) => {
+                const choicesHtml = Object.values(q.choices).map((choice, choiceIndex) => {
+                    const isMostSelected = currentAnswers[index].most === choice;
+                    const isLeastSelected = currentAnswers[index].least === choice;
+                    const isDisabled = (isMostSelected && isLeastSelected); 
+
+                    return `
+                        <div class="flex flex-col p-3 rounded-lg transition duration-150 ${isDisabled ? 'bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'}" data-choice="${choice}">
+                            <span class="font-medium text-gray-700 mb-2">${choice}</span>
+                            <div class="flex space-x-3">
+                                <label class="flex items-center space-x-1 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        onchange="window.handleSelection(${index}, 'most', '${choice}')"
+                                        ${isMostSelected ? 'checked' : ''}
+                                        ${isLeastSelected || isDisabled ? 'disabled' : ''}
+                                        class="form-checkbox h-5 w-5 ${isLeastSelected ? 'text-gray-400' : 'text-green-500'}"
+                                    />
+                                    <span class="text-sm">Paling</span>
+                                </label>
+                                <label class="flex items-center space-x-1 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        onchange="window.handleSelection(${index}, 'least', '${choice}')"
+                                        ${isLeastSelected ? 'checked' : ''}
+                                        ${isMostSelected || isDisabled ? 'disabled' : ''}
+                                        class="form-checkbox h-5 w-5 ${isMostSelected ? 'text-gray-400' : 'text-red-500'}"
+                                    />
+                                    <span class="text-sm">Paling Tidak</span>
+                                </label>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                const warning = !(currentAnswers[index].most && currentAnswers[index].least) ? 
+                    `<p class="mt-3 text-red-500 text-xs font-medium">Harap pilih satu "Paling" dan satu "Paling Tidak".</p>` : '';
+
+                return `
+                    <div class="p-4 border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition duration-200">
+                        <p class="font-semibold text-lg mb-4 text-blue-600">Pertanyaan ${q.id}. Pilih SATU Paling dan SATU Paling Tidak:</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${choicesHtml}</div>
+                        ${warning}
+                    </div>
+                `;
+            }).join('');
+
+            const isComplete = completedCount === discQuestions.length;
+            
+            let buttonText = 'Kirim Hasil ke Sheet & Lihat Ringkasan';
+            if (isSubmitting) {
+                buttonText = 'Mengirim... Harap Tunggu!';
+            } else if (!isComplete) {
+                buttonText = 'Lengkapi Tes Dahulu';
+            }
+
+            const buttonClass = isComplete && !isSubmitting ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-400 cursor-not-allowed';
+
+            return `
+                <div class="p-4 md:p-8 bg-white shadow-xl rounded-xl max-w-4xl mx-auto w-full">
+                    <h1 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-3">Sesi Tes DISC (${completedCount}/${discQuestions.length} Terjawab)</h1>
+                    <p class="mb-4 text-sm text-gray-600">Kandidat: <span class="font-bold text-gray-800">${candidateName}</span> (ID Sesi: <span class="font-mono text-xs p-1 bg-gray-200 rounded break-all">${sessionId}</span>)</p>
+
+                    <div class="grid grid-cols-1 gap-8">${questionHtml}</div>
+
+                    <div class="mt-8 flex justify-center">
+                        <button
+                            onclick="window.handleSubmitTest()"
+                            ${!isComplete || isSubmitting ? 'disabled' : ''}
+                            class="px-10 py-4 ${buttonClass} text-white font-bold text-lg rounded-lg shadow-lg transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        >
+                            ${buttonText}
+                        </button>
+                    </div>
+                </div>
+            `;
+        };
+        
+        const renderResults = () => {
+            // Kita tidak lagi menampilkan hasil skor, hanya pesan terima kasih
+            
+            return `
+                <div class="p-8 bg-white shadow-2xl rounded-xl max-w-4xl mx-auto w-full text-center">
+                    <h1 class="text-4xl font-extrabold text-green-700 mb-6">TERIMA KASIH</h1>
+                    <p class="text-xl text-gray-700 mb-8">
+                        Tes Profil DISC Anda telah selesai dan hasilnya sudah berhasil kami rekam.
+                    </p>
+                    
+                    <div class="p-6 bg-blue-50 border border-blue-200 rounded-lg mb-8">
+                        <p class="font-bold text-blue-700 text-lg">LANGKAH SELANJUTNYA:</p>
+                        <p class="mt-3 text-gray-800">
+                            Mohon segera **chat HRD** atau **kontak rekan yang memberikan tautan ini** untuk menginformasikan bahwa tes Anda telah selesai dikerjakan.
+                        </p>
+                        <p class="text-xs text-gray-500 mt-4">
+                            Nama Kandidat: <strong>${candidateName}</strong> | ID Sesi: <strong>${sessionId}</strong>
+                        </p>
+                    </div>
+
+                    <button
+                        onclick="window.resetTestAndGoToPage('welcome')"
+                        class="px-6 py-3 border border-gray-600 text-gray-600 font-semibold rounded-lg hover:bg-gray-100 transition duration-300"
+                    >
+                        Tutup Halaman Tes
+                    </button>
+                </div>
+            `;
+        };
+        
+        // Halaman 'Sheet' dihilangkan karena data dikirim ke luar.
+        // Fungsi ini hanya berfungsi sebagai navigasi.
+        const goToPage = (page) => {
+            if (page === 'sheet') {
+                // Di aplikasi baru ini, 'sheet' redirect ke 'results'
+                page = 'results';
+            }
+            currentPage = page;
+            updateUI();
+        };
+        
+        const resetTestAndGoToPage = (page) => {
+            currentAnswers = discQuestions.map(() => ({ most: null, least: null }));
+            profileResult = null;
+            // Nama kandidat tidak di-reset, tapi ID Sesi di-reset
+            sessionId = crypto.randomUUID(); 
+            goToPage(page);
+        };
+
+        const updateUI = () => {
+            const appContainer = document.getElementById('app-container');
+            if (!appContainer) return;
+
+            let content = '';
+            switch (currentPage) {
+                case 'welcome':
+                    content = renderWelcome();
+                    break;
+                case 'test':
+                    content = renderTest();
+                    break;
+                case 'results':
+                    content = renderResults();
+                    break;
+                default:
+                    content = renderWelcome();
+            }
+            appContainer.innerHTML = content;
+        };
+        
+        // Expose necessary functions globally for HTML event handlers
+        window.handleSelection = handleSelection;
+        window.handleSubmitTest = handleSubmitTest;
+        window.goToPage = goToPage; 
+        window.resetTestAndGoToPage = resetTestAndGoToPage;
+        window.handleNameInput = handleNameInput; // expose fungsi baru
+
+        // FIX: Use DOMContentLoaded listener for better reliability than window.onload
+        document.addEventListener('DOMContentLoaded', updateUI);
+
+    </script>
+    <style>
+        .form-checkbox:checked {
+            background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-100 p-4 sm:p-8 flex items-center justify-center font-sans">
+    <div id="app-container" class="w-full">
+        <!-- Content will be rendered here by JavaScript -->
+        <div class="text-center text-xl text-blue-600 p-12">Memuat...</div>
+    </div>
+</body>
+</html>
